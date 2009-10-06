@@ -9,6 +9,9 @@ module DependentProtect
     k = ActiveRecord.const_set('ReferentialIntegrityProtectionError', ripe_class)
 
     base.class_eval do
+      valid_keys_for_has_many_association << :protect_message
+      valid_keys_for_has_one_association << :protect_message
+      valid_keys_for_belongs_to_association << :protect_message
       class << self
         alias_method_chain :has_many, :protect
         alias_method_chain :has_one, :protect
@@ -25,7 +28,8 @@ module DependentProtect
       reflection = create_reflection(:has_many, association_id, options, self)
 
       if reflection.options[:dependent] == :protect
-        module_eval "before_destroy 'raise ActiveRecord::ReferentialIntegrityProtectionError, \"Can\\'t destroy because there\\'s at least one #{reflection.class_name} in this #{self.class_name}\" if self.#{reflection.name}.find(:first)'"
+        protect_message = reflection.options[:protect_message] || "Can\\'t destroy because there\\'s at least one #{reflection.class_name} in this #{self.class_name}"
+        module_eval "before_destroy 'if self.#{reflection.name}.find(:first); errors.add_to_base(\"#{protect_message}\"); raise ActiveRecord::ReferentialIntegrityProtectionError, errors.on_base.last; end'"
         options = options.clone
         options.delete(:dependent)
       end
@@ -41,7 +45,8 @@ module DependentProtect
       reflection = create_reflection(:has_one, association_id, options, self)
 
       if reflection.options[:dependent] == :protect
-        module_eval "before_destroy 'raise ActiveRecord::ReferentialIntegrityProtectionError, \"Can\\'t destroy because there\\'s a #{reflection.class_name} in this #{self.class_name}\" if self.#{reflection.name}'"
+        protect_message = reflection.options[:protect_message] || "Can\\'t destroy because there\\'s a #{reflection.class_name} in this #{self.class_name}"
+        module_eval "before_destroy 'if self.#{reflection.name}; errors.add_to_base(\"#{protect_message}\"); raise ActiveRecord::ReferentialIntegrityProtectionError, errors.on_base.last; end'"
         options = options.clone
         options.delete(:dependent)
       end
@@ -57,7 +62,8 @@ module DependentProtect
       reflection = create_reflection(:belongs_to, association_id, options, self)
 
       if reflection.options[:dependent] == :protect
-        module_eval "before_destroy 'raise ActiveRecord::ReferentialIntegrityProtectionError, \"Can\\'t destroy because there\\'s a #{reflection.class_name} in this #{self.class_name}\" if self.#{reflection.name}'"
+        protect_message = reflection.options[:protect_message] || "Can\\'t destroy because there\\'s a #{reflection.class_name} in this #{self.class_name}"
+        module_eval "before_destroy 'if self.#{reflection.name}; errors.add_to_base(\"#{protect_message}\"); raise ActiveRecord::ReferentialIntegrityProtectionError, errors.on_base.last; end'"
         options = options.clone
         options.delete(:dependent)
       end
