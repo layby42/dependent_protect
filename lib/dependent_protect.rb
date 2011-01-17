@@ -29,7 +29,7 @@ module DependentProtect
 
       if reflection.options[:dependent] == :protect
         protect_message = reflection.options[:protect_message] || "Can\\'t destroy because there\\'s at least one #{reflection.class_name} in this #{self.class_name}"
-        module_eval "before_destroy 'if self.#{reflection.name}.find(:first); errors.add_to_base(\"#{protect_message}\"); raise ActiveRecord::ReferentialIntegrityProtectionError, errors.on_base.last; end'"
+        module_eval "before_destroy {if self.#{reflection.name}.first; errors[:base] << \"#{protect_message}\"; raise ActiveRecord::ReferentialIntegrityProtectionError, errors[:base].last; end}"
         options = options.clone
         options.delete(:dependent)
       end
@@ -46,7 +46,7 @@ module DependentProtect
 
       if reflection.options[:dependent] == :protect
         protect_message = reflection.options[:protect_message] || "Can\\'t destroy because there\\'s a #{reflection.class_name} in this #{self.class_name}"
-        module_eval "before_destroy 'if self.#{reflection.name}; errors.add_to_base(\"#{protect_message}\"); raise ActiveRecord::ReferentialIntegrityProtectionError, errors.on_base.last; end'"
+        module_eval "before_destroy {if self.#{reflection.name}.first; errors[:base] << \"#{protect_message}\"; raise ActiveRecord::ReferentialIntegrityProtectionError, errors[:base].last; end}"
         options = options.clone
         options.delete(:dependent)
       end
